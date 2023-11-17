@@ -1,6 +1,6 @@
 import streamlit as st
 from dotenv import load_dotenv
-import pickle
+import dill as pickle
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings.openai import OpenAIEmbeddings
@@ -10,17 +10,12 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.callbacks import get_openai_callback
 import os
 
-
-
 load_dotenv()
 
 def main():
     st.header("Chat with Genius")
-
-    # upload a PDF file
     pdf = st.file_uploader("Upload your PDF", type='pdf')
 
-    # st.write(pdf)
     if pdf is not None:
         pdf_reader = PdfReader(pdf)
 
@@ -35,24 +30,37 @@ def main():
         )
         chunks = text_splitter.split_text(text=text)
 
-        # # embeddings
         store_name = pdf.name[:-4]
-        st.write(f'{store_name}')
-        # st.write(chunks)
+        vectorstore = None
 
         if os.path.exists(f"{store_name}.pkl"):
+            file_size = os.path.getsize(f"{store_name}.pkl")
+            st.write(f"File size: {file_size} bytes")
+
             with open(f"{store_name}.pkl", "rb") as f:
-                vectorstore = pickle.load(f)
-            # st.write('Embeddings Loaded from the Disk')s
+                try:
+                    pickled_data = pickle.load(f)
+                    st.write('Embeddings Loaded from the Disk')
+                    embeddings = OpenAIEmbeddings()
+                    vectorstore = FAISS.from_texts(chunks, embedding=embeddings)
+                except EOFError:
+                    st.write("Error: Failed to load embeddings. The file may be empty or corrupted.")
         else:
             embeddings = OpenAIEmbeddings()
             vectorstore = FAISS.from_texts(chunks, embedding=embeddings)
+            vectorstore._index = None
+            pickled_data = {
+                "custom_attributes": dir(vectorstore),
+            }
+
             with open(f"{store_name}.pkl", "wb") as f:
-                pickle.dump(vectorstore, f)
+                try:
+                    pickle.dump(pickled_data, f)
+                    st.write('Embeddings Pickled Successfully')
+                except Exception as e:
+                    st.write(f"Error during pickling: {e}")
 
 
-
-        # Accept user questions/query
         query = st.text_input("Ask questions:")
 
         if query:
@@ -64,7 +72,6 @@ def main():
                 response = chain.run(input_documents=docs, question=query)
                 print(cb)
             st.write(response)
-
 
 if __name__ == '__main__':
     main()
