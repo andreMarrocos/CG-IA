@@ -40,11 +40,11 @@ def main():
             with open(f"{store_name}.pkl", "rb") as f:
                 try:
                     pickled_data = pickle.load(f)
-                    st.write('Embeddings Loaded from the Disk')
+                    st.write('Embeddings loaded from the disk')
                     embeddings = OpenAIEmbeddings()
                     vectorstore = FAISS.from_texts(chunks, embedding=embeddings)
                 except EOFError:
-                    st.write("Error: Failed to load embeddings. The file may be empty or corrupted.")
+                    st.write("Failed to load")
         else:
             embeddings = OpenAIEmbeddings()
             vectorstore = FAISS.from_texts(chunks, embedding=embeddings)
@@ -56,7 +56,7 @@ def main():
             with open(f"{store_name}.pkl", "wb") as f:
                 try:
                     pickle.dump(pickled_data, f)
-                    st.write('Embeddings Pickled Successfully')
+                    st.write('Embeddings pickled successfully')
                 except Exception as e:
                     st.write(f"Error during pickling: {e}")
 
